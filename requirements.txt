@@ -1,0 +1,37 @@
+# === Core ===
+pandas
+numpy
+python-dotenv
+requests
+
+# === Data visualization ===
+matplotlib
+seaborn
+plotly
+
+# === Time series & ML ===
+scikit-learn
+xgboost
+lightgbm
+statsmodels
+prophet
+
+# === API / Backend ===
+fastapi
+uvicorn[standard]
+pydantic
+
+# === Streamlit app ===
+streamlit
+
+# === Database (Supabase / Postgres) ===
+supabase
+psycopg2-binary
+sqlalchemy
+
+# === Utils ===
+tqdm
+pyyaml
+
+# === Notebooks ===
+jupyter
