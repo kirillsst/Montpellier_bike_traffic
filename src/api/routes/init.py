@@ -1,28 +1,21 @@
 from fastapi import APIRouter
-from src.api.utils.fetch_ecocounter import (
-    fetch_all_counters,
-    fetch_all_timeseries
-)
+from src.api.utils.supabase_client import supabase
+from src.api.utils.fetch_ecocounter import fetch_all_counters, fetch_all_timeseries
+from src.api.utils.upload_counters import upload_counter_to_supabase
+import pandas as pd
+import ast
+from tqdm import tqdm
 
 router = APIRouter()
 
-
 @router.post("/init/load")
-def init_load():
-    """
-    Initialisation de l'archive : télécharger TOUS les capteurs + archives.
-    """
-    # 1 — liste des capteurs
-    df_counters = fetch_all_counters()
+def load_counters():
+    df = fetch_all_counters()  
 
-    # 2 — archive intensité
-    df_ts = fetch_all_timeseries(df_counters)
+    for _, row in df.iterrows():
+        try:
+            upload_counter_to_supabase(row, supabase)
+        except Exception as e:
+            print(e)
 
-    df_counters.to_csv("data/raw/counters.csv", index=False)
-    df_ts.to_csv("data/raw/velocounter.csv", index=False)
-
-    return {
-        "status": "OK",
-        "counters": len(df_counters),
-        "rows": len(df_ts)
-    }
+    return {"status": "ok", "rows_inserted": len(df)}
