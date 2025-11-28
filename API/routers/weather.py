@@ -18,6 +18,17 @@ DEFAULT_END_DATE = date.today().isoformat()
 router = APIRouter(prefix="/weather", tags=["weather"])
 
 
+def df_to_json_records(df: pd.DataFrame) -> list[dict]:
+    """Convert DataFrame to JSON-serializable list[dict] (datetime -> str)."""
+    df_out = df.copy()
+    # Convert ALL datetime columns to string
+    for col in df_out.select_dtypes(
+        include=["datetime64[ns]", "datetime64[ns, UTC]"]
+    ).columns:
+        df_out[col] = df_out[col].astype(str)
+    return df_out.to_dict(orient="records")
+
+
 def df_to_csv_response(df: pd.DataFrame, filename: str) -> StreamingResponse:
     buffer = StringIO()
     df.to_csv(buffer, index=False)
@@ -29,7 +40,9 @@ def df_to_csv_response(df: pd.DataFrame, filename: str) -> StreamingResponse:
     )
 
 
-def fetch_hourly_history(lat: float, lon: float, start_date: str, end_date: str) -> pd.DataFrame:
+def fetch_hourly_history(
+    lat: float, lon: float, start_date: str, end_date: str
+) -> pd.DataFrame:
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": lat,
@@ -41,7 +54,9 @@ def fetch_hourly_history(lat: float, lon: float, start_date: str, end_date: str)
     }
     r = requests.get(url, params=params)
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Open-Meteo archive error: {r.text}")
+        raise HTTPException(
+            status_code=502, detail=f"Open-Meteo archive error: {r.text}"
+        )
     d = r.json()["hourly"]
     df = pd.DataFrame(d)
     df["time"] = pd.to_datetime(df["time"])
@@ -59,14 +74,18 @@ def fetch_hourly_forecast(lat: float, lon: float) -> pd.DataFrame:
     }
     r = requests.get(url, params=params)
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Open-Meteo forecast error: {r.text}")
+        raise HTTPException(
+            status_code=502, detail=f"Open-Meteo forecast error: {r.text}"
+        )
     d = r.json()["hourly"]
     df = pd.DataFrame(d)
     df["time"] = pd.to_datetime(df["time"])
     return df
 
 
-def fetch_daily_history(lat: float, lon: float, start_date: str, end_date: str) -> pd.DataFrame:
+def fetch_daily_history(
+    lat: float, lon: float, start_date: str, end_date: str
+) -> pd.DataFrame:
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": lat,
@@ -81,7 +100,9 @@ def fetch_daily_history(lat: float, lon: float, start_date: str, end_date: str) 
     }
     r = requests.get(url, params=params)
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Open-Meteo archive error: {r.text}")
+        raise HTTPException(
+            status_code=502, detail=f"Open-Meteo archive error: {r.text}"
+        )
     d = r.json()["daily"]
     df = pd.DataFrame(d)
     df["time"] = pd.to_datetime(df["time"])
@@ -102,7 +123,9 @@ def fetch_daily_forecast(lat: float, lon: float) -> pd.DataFrame:
     }
     r = requests.get(url, params=params)
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Open-Meteo forecast error: {r.text}")
+        raise HTTPException(
+            status_code=502, detail=f"Open-Meteo forecast error: {r.text}"
+        )
     d = r.json()["daily"]
     df = pd.DataFrame(d)
     df["time"] = pd.to_datetime(df["time"])
@@ -120,7 +143,7 @@ def get_hourly_history(
     df = fetch_hourly_history(lat, lon, start_date, end_date)
     if format == "csv":
         return df_to_csv_response(df, f"hourly_history_{start_date}_{end_date}.csv")
-    return JSONResponse(df.to_dict(orient="records"))
+    return JSONResponse(df_to_json_records(df))
 
 
 @router.get("/hourly/forecast-tomorrow")
@@ -135,8 +158,10 @@ def get_hourly_forecast_tomorrow(
     if df_tomorrow.empty:
         raise HTTPException(status_code=404, detail="No hourly forecast for tomorrow.")
     if format == "csv":
-        return df_to_csv_response(df_tomorrow, f"hourly_forecast_{tomorrow.isoformat()}.csv")
-    return JSONResponse(df_tomorrow.to_dict(orient="records"))
+        return df_to_csv_response(
+            df_tomorrow, f"hourly_forecast_{tomorrow.isoformat()}.csv"
+        )
+    return JSONResponse(df_to_json_records(df_tomorrow))
 
 
 @router.get("/daily/history")
@@ -150,7 +175,7 @@ def get_daily_history(
     df = fetch_daily_history(lat, lon, start_date, end_date)
     if format == "csv":
         return df_to_csv_response(df, f"daily_history_{start_date}_{end_date}.csv")
-    return JSONResponse(df.to_dict(orient="records"))
+    return JSONResponse(df_to_json_records(df))
 
 
 @router.get("/daily/forecast-tomorrow")
@@ -165,5 +190,7 @@ def get_daily_forecast_tomorrow(
     if df_tomorrow.empty:
         raise HTTPException(status_code=404, detail="No daily forecast for tomorrow.")
     if format == "csv":
-        return df_to_csv_response(df_tomorrow, f"daily_forecast_{tomorrow.isoformat()}.csv")
-    return JSONResponse(df_tomorrow.to_dict(orient="records"))
+        return df_to_csv_response(
+            df_tomorrow, f"daily_forecast_{tomorrow.isoformat()}.csv"
+        )
+    return JSONResponse(df_to_json_records(df_tomorrow))

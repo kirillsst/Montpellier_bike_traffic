@@ -24,15 +24,30 @@ def df_to_csv_response(df: pd.DataFrame, filename: str) -> StreamingResponse:
 
 
 def fetch_french_holidays(year: int, zone: str = "metropole") -> pd.DataFrame:
-    url = f"https://calendrier.api.gouv.fr/jours-feries/{year}/{zone}.json"
-    r = requests.get(url)
-    if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Holidays API error: {r.text}")
+    """
+    Fetch French public holidays for a given year and zone.
+
+    Uses calendrier.api.gouv.fr:
+    - Example: https://calendrier.api.gouv.fr/jours-feries/metropole/2025.json
+    """
+    url = f"https://calendrier.api.gouv.fr/jours-feries/{zone}/{year}.json"
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        # 502 = upstream (external) error from the holidays API
+        raise HTTPException(
+            status_code=502,
+            detail=f"Error calling calendrier.api.gouv.fr: {e}"
+        )
+
     data = r.json()
+    # data is a mapping { "YYYY-MM-DD": "Holiday name", ... }
     df = pd.DataFrame(
         [{"date": d, "name": name, "zone": zone, "year": year} for d, name in data.items()]
     ).sort_values("date")
     return df.reset_index(drop=True)
+
 
 
 def fetch_current_year_holidays(zone: str = "metropole") -> pd.DataFrame:
