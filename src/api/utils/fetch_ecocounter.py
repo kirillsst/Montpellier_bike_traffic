@@ -2,30 +2,6 @@ import requests
 import pandas as pd
 from src.api.config import BASE_URL
 
-# BASE = "https://portail-api-data.montpellier3m.fr"
-
-# def fetch_all_counters():
-#     url = f"{BASE}/ecocounter"
-#     limit = 1000
-#     offset = 0
-
-#     all_results = []
-
-#     while True:
-#         full_url = f"{url}?limit={limit}&offset={offset}"
-#         response = requests.get(full_url).json()
-
-#         if not isinstance(response, list):
-#             raise ValueError(f"Unexpected API response: {response}")
-
-#         if len(response) == 0:
-#             break
-
-#         all_results.extend(response)
-#         offset += limit
-
-#     return pd.DataFrame(all_results)
-
 def fetch_api_counters_list():
     url = f"{BASE_URL}/ecocounter"
     limit, offset = 1000, 0

@@ -1,9 +1,14 @@
 import pandas as pd
 from tqdm import tqdm
 from src.api.utils.fetch_ecocounter import fetch_counter_timeseries
-from src.api.config import DATE_FIN_CIBLE
 from src.api.utils.supabase_client import supabase
 
+# Calcul dynamique de la date de fin (Fin du mois précédent)
+# On utilise UTC pour être cohérent avec le format de données
+today = pd.Timestamp.now('UTC')
+# On revient au dernier jour du mois d'avant
+last_month_end = (today.replace(day=1) - pd.Timedelta(days=1)).replace(hour=23, minute=59, second=59)
+DATE_FIN_CIBLE = last_month_end.strftime("%Y-%m-%dT%H:%M:%S")
 # def upload_counter_to_supabase(row, supabase):
 #     supabase.table("counters").insert({
 #         "counter_id": row["id"], 
