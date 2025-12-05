@@ -67,7 +67,7 @@ def run_final_pipeline():
     print("\n3. Fusion Météo (Hourly join)...")
     df_merged = pd.merge(df_grid, df_meteo, on='timestamp', how='left')
 
-    for col in ['temperature_2m','precipitation','windspeed_10m']:
+    for col in ['temperature_2m','precipitation','precipitation_class','is_raining','windspeed_10m']:
         if col in df_merged.columns:
             df_merged[col] = df_merged[col].fillna(0)
 
@@ -94,7 +94,7 @@ def run_final_pipeline():
 
     columns_needed = [
         'name', 'timestamp', 'intensity', 'latitude', 'longitude',
-        'temperature_2m', 'precipitation', 'windspeed_10m',
+        'temperature_2m', 'precipitation','precipitation_class','is_raining','windspeed_10m',
         'jour_semaine', 'is_weekend', 'nom_jour', 'is_ferie',
         'is_vacances', 'is_jour_ouvre', 'created_at'
     ]

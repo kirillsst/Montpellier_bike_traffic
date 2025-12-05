@@ -26,7 +26,7 @@ class CalendarPipeline:
             print("Le calendrier est vide — rien à sauvegarder.")
             return
 
-        print(f"--- 3b. Nettoyage des dates ---")
+        print("--- 3b. Nettoyage des dates ---")
 
         # Garantir format YYYY-MM-DD partout
         df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)

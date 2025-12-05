@@ -22,7 +22,6 @@ class MeteoPipeline:
             print(f"⚠️ DataFrame pour {table_name} est vide. Ignoré.")
             return
 
-        # Преобразуем все datetime в ISO строки
         for col in df.select_dtypes(include=["datetime64[ns]", "datetime64[ns, UTC]"]).columns:
             df[col] = df[col].apply(lambda x: x.isoformat() if pd.notnull(x) else None)
 

@@ -19,13 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(predict_router, prefix="/predict")
+app.include_router(predict_router, tags=["predict"])
 app.include_router(archive_router, tags=["archive"])
 app.include_router(archive_clean_router, tags=["archive_clean"])
 app.include_router(meteo_router, tags=["meteo_router"])
 app.include_router(calendar_router, tags=["calendar_router"])
 app.include_router(counters_final_router, tags=["counters_final_router"])
 
-@app.get("/")
+@app.get("/health")
 def root():
     return {"message": "Cyclable API is running"}

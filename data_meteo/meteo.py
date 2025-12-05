@@ -53,7 +53,7 @@ class MeteoFetcher:
 
         # 2. Prévision (Hourly) -> Reste inchangé (Aujourd'hui + 4 jours)
         # Pas de start_date/end_date ici, l'API prend "maintenant" par défaut
-        print(f"   🔮 Récupération des prévisions (J+4)...")
+        print("   🔮 Récupération des prévisions (J+4)...")
         df_hourly_fore = self._fetch_api(url_forecast, {
             "latitude": LAT, "longitude": LON,
             "hourly": "temperature_2m,precipitation,windspeed_10m",

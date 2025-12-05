@@ -2,13 +2,13 @@ import pandas as pd
 from pathlib import Path
 
 # --- CONFIGURATION DU CHEMIN EXACT ---
-FILE_PATH = Path("/home/thibaud/Montpellier_bike_traffic/data_calendrier/data/calendrier_complet.csv")
+FILE_PATH = Path("/Montpellier_bike_traffic/data_calendrier/data/calendrier_complet.csv")
 
 def audit():
     print(f"--- AUDIT DE QUALITÉ : {FILE_PATH} ---")
     
     if not FILE_PATH.exists():
-        print(f"❌ Erreur : Le fichier est introuvable à l'emplacement spécifié.")
+        print("❌ Erreur : Le fichier est introuvable à l'emplacement spécifié.")
         return
 
     # 1. Chargement
@@ -23,7 +23,7 @@ def audit():
     expected_range = pd.date_range(start="2023-01-01", end="2026-12-31", freq='D')
     nb_jours_attendus = len(expected_range) # 1461 jours (avec 2024 bissextile)
     
-    print(f"\n1. Période couverte :")
+    print("\n1. Période couverte :")
     print(f"   Du {start_date.date()} au {end_date.date()}")
     print(f"   Lignes réelles   : {len(df)}")
     print(f"   Lignes attendues : {nb_jours_attendus}")
@@ -38,7 +38,7 @@ def audit():
             print(f"   Jours manquants : {missing.date}")
 
     # 3. Vérification des Valeurs Vides (NaN)
-    print(f"\n2. Valeurs vides (NaN) :")
+    print("\n2. Valeurs vides (NaN) :")
     nb_na = df.isna().sum().sum()
     if nb_na == 0:
         print("   ✅ PARFAIT : Le tableau est 100% rempli.")
@@ -47,7 +47,7 @@ def audit():
         print(df.isna().sum())
 
     # 4. Vérification des Colonnes
-    print(f"\n3. Colonnes présentes :")
+    print("\n3. Colonnes présentes :")
     cols_attendues = ["date", "jour_semaine", "is_weekend", "nom_jour", "is_ferie", "is_vacances", "is_jour_ouvre"]
     
     # On vérifie l'ordre et la présence
@@ -59,7 +59,7 @@ def audit():
 
     # 5. Test de cohérence (Logique métier)
     # Un jour ne peut pas être ouvré ET (Week-end OU Férié)
-    print(f"\n4. Test de cohérence logique (Jour Ouvré) :")
+    print("\n4. Test de cohérence logique (Jour Ouvré) :")
     incoherent = df[ (df['is_jour_ouvre'] == 1) & ((df['is_weekend'] == 1) | (df['is_ferie'] == 1)) ]
     
     if incoherent.empty:

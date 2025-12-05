@@ -9,16 +9,6 @@ today = pd.Timestamp.now('UTC')
 # On revient au dernier jour du mois d'avant
 last_month_end = (today.replace(day=1) - pd.Timedelta(days=1)).replace(hour=23, minute=59, second=59)
 DATE_FIN_CIBLE = last_month_end.strftime("%Y-%m-%dT%H:%M:%S")
-# def upload_counter_to_supabase(row, supabase):
-#     supabase.table("counters").insert({
-#         "counter_id": row["id"], 
-#         "deviceType": row["deviceType"]["value"],
-#         "lane_id": row["laneId"]["value"],
-#         "lat": row["location"]["value"]["coordinates"][0],
-#         "lon": row["location"]["value"]["coordinates"][1],
-#         "reversed_lane": row["reversedLane"]["value"],
-#         "vehicle_type": row["vehicleType"]["value"]
-#     }).execute()
 
 def download_and_merge_timeseries(df_merged, PERIODES):
     all_dfs = []
@@ -39,8 +29,10 @@ def download_and_merge_timeseries(df_merged, PERIODES):
                     df_temp["latitude"] = row["latitude"]
                     df_temp["longitude"] = row["longitude"]
                     all_dfs.append(df_temp)
-            except:
+            except KeyError:  # new (04/12/2025)
                 continue
+            except ValueError:
+                continue # ------- 
 
     if all_dfs:
         df_concat = pd.concat(all_dfs, ignore_index=True)
