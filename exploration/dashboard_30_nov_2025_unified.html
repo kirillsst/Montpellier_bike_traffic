@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Vélo - 2025-11-30</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root { 
+            --sidebar-width: 350px; 
+            --primary-color: #2c3e50; 
+            --bg-color: #f8f9fa; 
+            --active-color: #e3f2fd; /* Couleur de sélection */
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Inter', sans-serif; overflow: hidden; }
+
+        .container { display: flex; height: 100vh; width: 100vw; flex-direction: row; }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar-width); min-width: var(--sidebar-width); max-width: var(--sidebar-width);
+            flex-shrink: 0; background-color: white; box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            z-index: 1001; display: flex; flex-direction: column; height: 100%;
+        }
+
+        .sidebar-header { padding: 25px; background-color: var(--primary-color); color: white; }
+        .sidebar-header h1 { margin: 0; font-size: 1.2rem; font-weight: 600; }
+        .sidebar-header p { margin: 8px 0 0; opacity: 0.8; font-size: 0.9rem; }
+
+        .counter-list { flex: 1; overflow-y: auto; padding: 15px; background-color: #fcfcfc; }
+
+        .counter-card {
+            background: white; border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px;
+            margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .counter-card:hover { transform: translateX(5px); border-color: #bbb; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+
+        /* Style quand un élément est actif (cliqué) */
+        .counter-card.active {
+            background-color: var(--active-color);
+            border-color: #2196f3;
+            border-left: 5px solid #2196f3;
+        }
+
+        .counter-name h3 { margin: 0; font-size: 0.95rem; color: #333; }
+        .counter-rank { color: #999; font-size: 0.8rem; margin-right: 8px; }
+        .traffic-badge { font-size: 0.85rem; padding: 5px 10px; border-radius: 20px; color: white; font-weight: 600; }
+
+        #map { flex-grow: 1; height: 100%; z-index: 1; }
+
+        .marker-cluster div { background-color: rgba(44, 62, 80, 0.95); color: white; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1><i class="fa-solid fa-bicycle"></i> Trafic Vélo</h1>
+            <p>Date : <b>2025-11-30</b></p>
+        </div>
+        <div class="counter-list" id="counterList"></div>
+    </div>
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+<script>
+    const counters = [{"name": "Compteur V\u00e9lo Jean Mermoz", "lat": 43.6115, "lon": 3.8899, "total": 397, "formatted_total": "397", "color": "#e74c3c"}, {"name": "Compteur V\u00e9lo Lattes 1", "lat": 43.57883, "lon": 3.93324, "total": 302, "formatted_total": "302", "color": "#e74c3c"}, {"name": "Compteur V\u00e9lo Renouvier chauss\u00e9e", "lat": 43.60383, "lon": 3.86779, "total": 266, "formatted_total": "266", "color": "#e74c3c"}, {"name": "Compteur V\u00e9lo Pompignane1", "lat": 43.614, "lon": 3.8981, "total": 236, "formatted_total": "236", "color": "#f39c12"}, {"name": "Compteur V\u00e9lo Pompignane2", "lat": 43.614, "lon": 3.8981, "total": 191, "formatted_total": "191", "color": "#f39c12"}, {"name": "Compteur V\u00e9lo Grabels", "lat": 43.6452, "lon": 3.8224, "total": 177, "formatted_total": "177", "color": "#3498db"}, {"name": "Compteur V\u00e9lo Renouvier bande cyclable", "lat": 43.60381, "lon": 3.8677, "total": 176, "formatted_total": "176", "color": "#3498db"}, {"name": "Compteur V\u00e9lo Vieussens2", "lat": 43.6001, "lon": 3.8776, "total": 159, "formatted_total": "159", "color": "#2ecc71"}, {"name": "Compteur V\u00e9lo Vieussens1", "lat": 43.6001, "lon": 3.8776, "total": 126, "formatted_total": "126", "color": "#2ecc71"}, {"name": "Compteur V\u00e9lo Grossec", "lat": 43.5754, "lon": 3.8617, "total": 9, "formatted_total": "9", "color": "#2ecc71"}];
+    const markersMap = {}; // Pour stocker les références aux marqueurs
+
+    // Init Carte
+    const map = L.map('map', {zoomControl: false}).setView([43.6107, 3.8767], 13);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: 'OpenStreetMap & Carto', maxZoom: 20
+    }).addTo(map);
+
+    const markersGroup = L.markerClusterGroup({
+        showCoverageOnHover: false, zoomToBoundsOnClick: true, spiderfyOnMaxZoom: true,
+        removeOutsideVisibleBounds: true, spiderfyDistanceMultiplier: 2
+    });
+
+    const listContainer = document.getElementById('counterList');
+
+    // --- FONCTION UNIFIÉE DE SÉLECTION ---
+    function selectCounter(index) {
+        // 1. Gestion de la liste (Highlight visuel)
+        document.querySelectorAll('.counter-card').forEach(el => el.classList.remove('active'));
+        const card = document.getElementById(`card-${index}`);
+        if (card) {
+            card.classList.add('active');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 2. Gestion de la Carte (Zoom + Popup)
+        const marker = markersMap[index];
+        if (marker) {
+            // zoomToShowLayer gère automatiquement les clusters (spiderfy)
+            markersGroup.zoomToShowLayer(marker, function() {
+                marker.openPopup();
+            });
+        }
+    }
+
+    // --- CRÉATION DES ÉLÉMENTS ---
+    counters.forEach((c, index) => {
+        // A. Marqueur Carte
+        const marker = L.circleMarker([c.lat, c.lon], {
+            radius: 9, fillColor: c.color, color: "#fff", weight: 3, opacity: 1, fillOpacity: 1
+        });
+
+        const popupContent = `
+            <div style="text-align: center; font-family: 'Inter', sans-serif; min-width: 150px;">
+                <h4 style="margin: 0 0 8px; color: #2c3e50;">${c.name}</h4>
+                <div style="background-color: ${c.color}; color: white; padding: 4px 10px; border-radius: 4px; display: inline-block; font-weight: bold;">
+                    ${c.formatted_total} <small>vélos</small>
+                </div>
+            </div>
+        `;
+        marker.bindPopup(popupContent);
+
+        // Evénement: Clic sur le marqueur active aussi la liste
+        marker.on('click', () => selectCounter(index));
+
+        markersGroup.addLayer(marker);
+        markersMap[index] = marker; // Stockage pour accès futur
+
+        // B. Carte Liste
+        const card = document.createElement('div');
+        card.className = 'counter-card';
+        card.id = `card-${index}`; // ID unique pour le ciblage
+        card.innerHTML = `
+            <div class="counter-name">
+                <span class="counter-rank">#${index + 1}</span>
+                <h3>${c.name}</h3>
+            </div>
+            <div class="traffic-badge" style="background-color: ${c.color};">${c.formatted_total}</div>
+        `;
+
+        // Evénement: Clic sur la liste active la carte
+        card.addEventListener('click', () => selectCounter(index));
+
+        listContainer.appendChild(card);
+    });
+
+    map.addLayer(markersGroup);
+
+    // Fit bounds pour voir tous les points au chargement
+    if (counters.length > 0) {
+        const group = new L.featureGroup(markersGroup.getLayers());
+        map.fitBounds(group.getBounds(), {padding: [50, 50]});
+    }
+</script>
+</body>
+</html>
