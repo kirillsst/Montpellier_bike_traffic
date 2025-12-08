@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes.predict import router as predict_router
+from .routes.predict_hourly_api import router as predict_router
 from .routes.archive import router as archive_router
 from .routes.archive_clean import router as archive_clean_router
 from .routes.meteo import router as meteo_router
