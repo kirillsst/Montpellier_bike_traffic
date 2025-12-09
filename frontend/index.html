@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Vélo Montpellier</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="app-container">
+    <div class="sidebar">
+        <div class="header">
+            <h1><i class="fa-solid fa-bicycle"></i> Montpellier Vélo</h1>
+            
+            <div class="nav-tabs">
+                <button class="nav-btn active" onclick="switchTab('map')">
+                    <i class="fa-solid fa-map"></i> Prévisions
+                </button>
+                <button class="nav-btn" onclick="switchTab('stats')">
+                    <i class="fa-solid fa-chart-line"></i> Historique
+                </button>
+            </div>
+
+            <div id="info-map">
+                <div class="date-badge" id="dateBadge">Chargement...</div>
+                <p>Prévisions sur nos 10 capteurs clés</p>
+            </div>
+            <div id="info-stats" style="display:none;">
+                <p>Historique depuis 2023*</p>
+            </div>
+        </div>
+        
+        <div class="counter-list" id="counterList"></div>
+        
+        <div class="kpi-list" id="kpiList" style="display:none;">
+            </div>
+    </div>
+
+    <div class="main-wrapper">
+        
+        <div id="view-map" class="view-section active">
+            <div id="map"></div>
+            <div class="chart-panel" id="chartPanel">
+                <div class="chart-header">
+                    <span class="chart-title" id="chartTitle">...</span>
+                    <i class="fa-solid fa-xmark close-btn" id="closeChartBtn"></i>
+                </div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-stats" class="view-section" style="display:none;">
+            <div class="stats-container">
+                <div class="stat-card full-width">
+                    <h3>Evolution du Trafic (Mensuel)</h3>
+                    <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-card half-width">
+                        <h3>Semaine vs Week-end</h3>
+                        <div class="chart-box"><canvas id="weeklyChart"></canvas></div>
+                    </div>
+                    <div class="stat-card half-width">
+                        <h3>Impact Météo (Moyenne/h)</h3>
+                        <div class="chart-box"><canvas id="weatherChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="assets/js/main.js"></script>
+
+</body>
+</html>

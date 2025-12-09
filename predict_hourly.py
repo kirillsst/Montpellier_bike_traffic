@@ -3,19 +3,18 @@ import joblib
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# --- IMPORTS (Depuis la racine) ---
+# --- IMPORTS LOCAUX ---
 from train_model_xgboost import loader, config
 
 # --- CONFIGURATION ---
-TARGET_DATE = "2025-11-30"
+TARGET_DATE = "2025-11-24"
 
 def main():
-    print(f"--- PRÉDICTION HORAIRE PRODUCTION : {TARGET_DATE} ---")
+    print(f"--- PRÉDICTION HORAIRE GEOLOCALISÉE : {TARGET_DATE} ---")
 
-    # 1. Chargement
+    # 1. Chargement & Feature Engineering
     df = loader.load_full_dataset()
     
-    # 2. Filtre
     target_dt = pd.to_datetime(TARGET_DATE).date()
     df_day = df[df['timestamp'].dt.date == target_dt].copy()
     
@@ -24,71 +23,78 @@ def main():
         return
 
     print(f"Données brutes chargées : {len(df_day)} lignes.")
-
-    # 3. Feature Engineering
     df_day = loader.create_features(df_day)
 
-    # 4. Boucle de Prédiction
-    compteurs = df_day['name'].unique()
-    results_hourly = {'Heure': list(range(24))}
+    # 2. Préparation du stockage
+    # On va stocker une liste de dictionnaires pour créer un DataFrame propre
+    predictions_list = []
     
+    compteurs = df_day['name'].unique()
     print(f"Chargement des modèles depuis : {config.ARTIFACTS_DIR}")
 
+    # 3. Boucle de Prédiction
     for name in compteurs:
+        # A. Isolation des données
         df_c = df_day[df_day['name'] == name].sort_values('timestamp')
         
+        # B. Récupération des Coordonnées GPS (Depuis la donnée brute)
+        # On prend la première valeur (car la position ne change pas)
+        lat = df_c['latitude'].iloc[0]
+        lon = df_c['longitude'].iloc[0]
+
+        # C. Chargement Modèle
         safe_name = name.replace(" ", "_").replace("/", "-")
         model_path = config.ARTIFACTS_DIR / f"xgboost_{safe_name}.joblib"
         
         if model_path.exists():
             model = joblib.load(model_path)
             
-            # Prédiction
+            # D. Prédiction
             preds = model.predict(df_c[loader.FEATURES_XGBOOST])
+            y_pred = [int(max(0, x)) for x in preds] # Nettoyage
             
-            # Nettoyage
-            y_pred = [int(max(0, x)) for x in preds]
-            
-            if len(y_pred) == 24:
-                results_hourly[name] = y_pred
+            # E. Stockage structuré (Format "Long")
+            # On parcourt les 24 heures (ou moins si données partielles)
+            for i, val in enumerate(y_pred):
+                hour = df_c['hour'].iloc[i] if i < len(df_c) else i
+                
+                predictions_list.append({
+                    "name": name,
+                    "date": TARGET_DATE,
+                    "hour": hour,
+                    "predicted_intensity": val,
+                    "latitude": lat,
+                    "longitude": lon
+                })
         else:
             print(f"❌ Modèle manquant pour : {name}")
 
-    # 5. Résultats & Visualisation
-    df_res = pd.DataFrame(results_hourly)
-    df_res.set_index('Heure', inplace=True)
-    
-    df_res['TOTAL_VILLE'] = df_res.sum(axis=1)
+    # 4. CRÉATION DU DATAFRAME FINAL
+    df_final = pd.DataFrame(predictions_list)
 
-    print("\n=== PRÉDICTIONS PAR HEURE (TOTAL VILLE) ===")
-    print(df_res[['TOTAL_VILLE']].T)
-
-    # --- MODIFICATION ICI : SAUVEGARDE À LA RACINE ---
-    # config.BASE_DIR pointe déjà vers la racine du projet
+    # 5. Export
     out_csv_path = config.BASE_DIR / f"pred_horaire_{TARGET_DATE}.csv"
+    df_final.to_csv(out_csv_path, index=False)
     
-    df_res.to_csv(out_csv_path)
-    print(f"\n💾 Détail sauvegardé à la racine : {out_csv_path}")
+    print("\n=== APERÇU DU FICHIER GÉNÉRÉ ===")
+    print(df_final.head())
+    print(f"\n💾 Détail géolocalisé sauvegardé dans : {out_csv_path}")
 
-    # Graphique
+    # 6. Visualisation Rapide (Total Ville)
+    # On pivote juste pour le graphique
+    df_pivot = df_final.pivot(index='hour', columns='name', values='predicted_intensity')
+    total_ville_pred = df_pivot.sum(axis=1)
+    
+    real_total = df_day.groupby(df_day['timestamp'].dt.hour)['intensity'].sum()
+    real_total = real_total.reindex(range(24), fill_value=0)
+
     plt.figure(figsize=(12, 6))
-    
-    real_total = real_data_total_ville(df_day)
-    
-    plt.plot(df_res.index, real_total, label='Réalité (Total)', color='black', linewidth=2, linestyle='--')
-    plt.plot(df_res.index, df_res['TOTAL_VILLE'], label='Prédiction XGBoost', color='#e74c3c', linewidth=3)
-    
-    plt.title(f"Prévision Trafic Global - {TARGET_DATE}", fontsize=14)
-    plt.xlabel("Heure")
-    plt.ylabel("Passages cumulés")
+    plt.plot(real_total.index, real_total.values, label='Réalité', color='black', linestyle='--')
+    plt.plot(total_ville_pred.index, total_ville_pred.values, label='Prédiction', color='#e74c3c', linewidth=3)
+    plt.title(f"Prévision {TARGET_DATE} (Données Géolocalisées)", fontsize=14)
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.show()
-
-def real_data_total_ville(df_day):
-    grp = df_day.groupby(df_day['timestamp'].dt.hour)['intensity'].sum()
-    grp = grp.reindex(range(24), fill_value=0)
-    return grp.values
 
 if __name__ == "__main__":
     main()

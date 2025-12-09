@@ -97,22 +97,27 @@
     const listContainer = document.getElementById('counterList');
 
     // --- FONCTION UNIFIÉE DE SÉLECTION ---
-    function selectCounter(index) {
+    function selectCounter(index, fromMap = false) {
         // 1. Gestion de la liste (Highlight visuel)
         document.querySelectorAll('.counter-card').forEach(el => el.classList.remove('active'));
         const card = document.getElementById(`card-${index}`);
         if (card) {
             card.classList.add('active');
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // SCROLL AUTO : Si on vient de la carte, on scrolle la liste vers l'élément
+            if (fromMap) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         // 2. Gestion de la Carte (Zoom + Popup)
         const marker = markersMap[index];
         if (marker) {
-            // zoomToShowLayer gère automatiquement les clusters (spiderfy)
-            markersGroup.zoomToShowLayer(marker, function() {
-                marker.openPopup();
-            });
+            // Si on vient de la liste, on zoom. Si on vient de la carte, on est déjà dessus.
+            if (!fromMap) {
+                markersGroup.zoomToShowLayer(marker, function() {
+                    marker.openPopup();
+                });
+            }
         }
     }
 
@@ -133,8 +138,9 @@
         `;
         marker.bindPopup(popupContent);
 
-        // Evénement: Clic sur le marqueur active aussi la liste
-        marker.on('click', () => selectCounter(index));
+        // Evénement: Clic sur le marqueur -> Active la liste
+        // 'true' indique que l'appel vient de la carte (pour le scroll)
+        marker.on('click', () => selectCounter(index, true));
 
         markersGroup.addLayer(marker);
         markersMap[index] = marker; // Stockage pour accès futur
@@ -151,8 +157,8 @@
             <div class="traffic-badge" style="background-color: ${c.color};">${c.formatted_total}</div>
         `;
 
-        // Evénement: Clic sur la liste active la carte
-        card.addEventListener('click', () => selectCounter(index));
+        // Evénement: Clic sur la liste -> Active la carte
+        card.addEventListener('click', () => selectCounter(index, false));
 
         listContainer.appendChild(card);
     });
