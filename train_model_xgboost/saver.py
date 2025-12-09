@@ -1,7 +1,7 @@
 # train_model_xgboost/saver.py
 import joblib
 import pandas as pd
-from config import ARTIFACTS_DIR
+from train_model_xgboost.config import ARTIFACTS_DIR
 
 def save_model(model, counter_name):
     """Sauvegarde le modèle XGBoost."""

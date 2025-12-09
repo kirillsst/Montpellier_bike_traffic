@@ -2,10 +2,7 @@
 import logging
 import pandas as pd
 
-import loader
-import trainer
-import evaluator
-import saver
+from train_model_xgboost import (loader, trainer, evaluator, saver)
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger()
