@@ -42,7 +42,7 @@ def api_dashboard():
 
         date_str = "Date inconnue"
         if 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+            df['date'] = pd.to_datetime(df['date'])
             target_date = df['date'].max()
             df = df[df['date'] == target_date]
             date_str = format_date_fr(target_date)
