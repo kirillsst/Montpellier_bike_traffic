@@ -1,100 +1,129 @@
 import pandas as pd
 import joblib
-import matplotlib.pyplot as plt
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+from supabase import create_client
 
 # --- IMPORTS LOCAUX ---
-from train_model_xgboost import loader, config
+# On garde config pour le chemin des modèles, mais on n'utilise plus loader
+from train_model_xgboost import config, loader
 
 # --- CONFIGURATION ---
-TARGET_DATE = "2025-11-24"
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 
-def main():
-    print(f"--- PRÉDICTION HORAIRE GEOLOCALISÉE : {TARGET_DATE} ---")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-    # 1. Chargement & Feature Engineering
-    df = loader.load_full_dataset()
-    
-    target_dt = pd.to_datetime(TARGET_DATE).date()
-    df_day = df[df['timestamp'].dt.date == target_dt].copy()
-    
+# Tables
+INPUT_TABLE = "counters_forecast"
+OUTPUT_TABLE = "predictions_hourly"
+
+def get_supabase():
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise ValueError("❌ Erreur : SUPABASE_URL ou SUPABASE_KEY manquant dans le .env")
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def run_prediction_pipeline():
+    print(f"🚀 Démarrage de la prédiction depuis '{INPUT_TABLE}'...")
+    supabase = get_supabase()
+
+    # 1. CHARGEMENT DES DONNÉES PRÉPARÉES (INFERENCE STORE)
+    print("📥 Récupération des données d'entrée...")
+    response = supabase.table(INPUT_TABLE).select("*").execute()
+    df_day = pd.DataFrame(response.data)
+
     if df_day.empty:
-        print(f"⚠️ Aucune donnée pour le {TARGET_DATE}")
+        print(f"⚠️ La table {INPUT_TABLE} est vide. Lancez d'abord 'prepare_forecast_data.py'.")
         return
 
-    print(f"Données brutes chargées : {len(df_day)} lignes.")
-    df_day = loader.create_features(df_day)
-
-    # 2. Préparation du stockage
-    # On va stocker une liste de dictionnaires pour créer un DataFrame propre
-    predictions_list = []
+    # Conversion et Tri
+    df_day['timestamp'] = pd.to_datetime(df_day['timestamp'])
+    df_day = df_day.sort_values(by=['name', 'timestamp'])
     
+    # On récupère la date cible depuis les données
+    target_date = df_day['timestamp'].dt.date.iloc[0]
+    target_date_str = str(target_date)
+    print(f"📅 Date détectée : {target_date_str}")
+    
+    # Feature Engineering léger (Juste l'extraction de l'heure et des features temporelles si manquantes)
+    # Note : Votre script de préparation a déjà fait le gros du travail (meteo, vacances, etc.)
+    df_day['hour'] = df_day['timestamp'].dt.hour
+    df_day['dayofyear'] = df_day['timestamp'].dt.dayofyear
+    df_day['month'] = df_day['timestamp'].dt.month
+    df_day['year'] = df_day['timestamp'].dt.year
+    df_day['dayofweek'] = df_day['timestamp'].dt.dayofweek
+    
+    # 2. PRÉDICTION
+    predictions_list = []
     compteurs = df_day['name'].unique()
-    print(f"Chargement des modèles depuis : {config.ARTIFACTS_DIR}")
+    print(f"🤖 Chargement des modèles depuis : {config.ARTIFACTS_DIR}")
 
-    # 3. Boucle de Prédiction
     for name in compteurs:
-        # A. Isolation des données
-        df_c = df_day[df_day['name'] == name].sort_values('timestamp')
+        # Isolation du compteur
+        df_c = df_day[df_day['name'] == name].copy()
         
-        # B. Récupération des Coordonnées GPS (Depuis la donnée brute)
-        # On prend la première valeur (car la position ne change pas)
+        # Récupération Lat/Lon pour la sortie
         lat = df_c['latitude'].iloc[0]
         lon = df_c['longitude'].iloc[0]
 
-        # C. Chargement Modèle
+        # Chargement du modèle spécifique
         safe_name = name.replace(" ", "_").replace("/", "-")
         model_path = config.ARTIFACTS_DIR / f"xgboost_{safe_name}.joblib"
         
         if model_path.exists():
             model = joblib.load(model_path)
             
-            # D. Prédiction
-            preds = model.predict(df_c[loader.FEATURES_XGBOOST])
-            y_pred = [int(max(0, x)) for x in preds] # Nettoyage
-            
-            # E. Stockage structuré (Format "Long")
-            # On parcourt les 24 heures (ou moins si données partielles)
-            for i, val in enumerate(y_pred):
-                hour = df_c['hour'].iloc[i] if i < len(df_c) else i
+            # On s'assure que les colonnes sont dans le bon ordre pour XGBoost
+            # loader.FEATURES_XGBOOST contient la liste exacte utilisée à l'entraînement
+            try:
+                X = df_c[loader.FEATURES_XGBOOST]
+                preds = model.predict(X)
                 
-                predictions_list.append({
-                    "name": name,
-                    "date": TARGET_DATE,
-                    "hour": hour,
-                    "predicted_intensity": val,
-                    "latitude": lat,
-                    "longitude": lon
-                })
+                # Nettoyage (pas de vélos négatifs)
+                y_pred = [int(max(0, x)) for x in preds]
+                
+                # Stockage des résultats
+                for i, val in enumerate(y_pred):
+                    hour = df_c['hour'].iloc[i]
+                    
+                    predictions_list.append({
+                        "name": name,
+                        "date": target_date_str,
+                        "hour": int(hour),
+                        "predicted_intensity": val,
+                        "latitude": lat,
+                        "longitude": lon
+                    })
+            except KeyError as e:
+                print(f"❌ Erreur colonnes pour {name}: {e}")
+                print(f"Colonnes dispos : {df_c.columns.tolist()}")
+                return
         else:
-            print(f"❌ Modèle manquant pour : {name}")
+            print(f"⚠️ Modèle manquant pour : {name}")
 
-    # 4. CRÉATION DU DATAFRAME FINAL
-    df_final = pd.DataFrame(predictions_list)
+    if not predictions_list:
+        print("❌ Aucune prédiction générée.")
+        return
 
-    # 5. Export
-    out_csv_path = config.BASE_DIR / f"pred_horaire_{TARGET_DATE}.csv"
-    df_final.to_csv(out_csv_path, index=False)
+    # 3. UPLOAD VERS SUPABASE (PREDICTIONS_HOURLY)
+    print(f"☁️ Envoi de {len(predictions_list)} prévisions vers '{OUTPUT_TABLE}'...")
     
-    print("\n=== APERÇU DU FICHIER GÉNÉRÉ ===")
-    print(df_final.head())
-    print(f"\n💾 Détail géolocalisé sauvegardé dans : {out_csv_path}")
-
-    # 6. Visualisation Rapide (Total Ville)
-    # On pivote juste pour le graphique
-    df_pivot = df_final.pivot(index='hour', columns='name', values='predicted_intensity')
-    total_ville_pred = df_pivot.sum(axis=1)
+    # Nettoyage préalable pour cette date (pour éviter les doublons)
+    supabase.table(OUTPUT_TABLE).delete().eq("date", target_date_str).execute()
     
-    real_total = df_day.groupby(df_day['timestamp'].dt.hour)['intensity'].sum()
-    real_total = real_total.reindex(range(24), fill_value=0)
+    # Batch insert
+    batch_size = 100
+    for i in range(0, len(predictions_list), batch_size):
+        batch = predictions_list[i:i+batch_size]
+        try:
+            supabase.table(OUTPUT_TABLE).insert(batch).execute()
+            print(f"   -> Bloc {i}-{i+len(batch)} ok")
+        except Exception as e:
+            print(f"❌ Erreur insert : {e}")
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(real_total.index, real_total.values, label='Réalité', color='black', linestyle='--')
-    plt.plot(total_ville_pred.index, total_ville_pred.values, label='Prédiction', color='#e74c3c', linewidth=3)
-    plt.title(f"Prévision {TARGET_DATE} (Données Géolocalisées)", fontsize=14)
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.show()
+    print("✅ Cycle terminé avec succès !")
 
 if __name__ == "__main__":
-    main()
+    run_prediction_pipeline()
