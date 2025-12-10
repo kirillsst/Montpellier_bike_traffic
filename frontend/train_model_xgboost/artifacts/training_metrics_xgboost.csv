@@ -1,0 +1,11 @@
+Compteur,MAE,Erreur %,Modèle
+Compteur Vélo Vieussens1,1.52,30.33,xgboost_Compteur_Vélo_Vieussens1.joblib
+Compteur Vélo Grossec,1.65,438.93,xgboost_Compteur_Vélo_Grossec.joblib
+Compteur Vélo Pompignane1,2.31,23.92,xgboost_Compteur_Vélo_Pompignane1.joblib
+Compteur Vélo Renouvier chaussée,2.53,23.28,xgboost_Compteur_Vélo_Renouvier_chaussée.joblib
+Compteur Vélo Vieussens2,2.63,40.92,xgboost_Compteur_Vélo_Vieussens2.joblib
+Compteur Vélo Grabels,2.68,39.01,xgboost_Compteur_Vélo_Grabels.joblib
+Compteur Vélo Renouvier bande cyclable,2.83,40.87,xgboost_Compteur_Vélo_Renouvier_bande_cyclable.joblib
+Compteur Vélo Jean Mermoz,4.51,27.3,xgboost_Compteur_Vélo_Jean_Mermoz.joblib
+Compteur Vélo Lattes 1,6.32,50.53,xgboost_Compteur_Vélo_Lattes_1.joblib
+Compteur Vélo Pompignane2,6.69,88.22,xgboost_Compteur_Vélo_Pompignane2.joblib

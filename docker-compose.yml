@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./frontend:/app
+    command: uvicorn api_server:app --host 0.0.0.0 --port 8001 --reload
+    restart: always
+
+
