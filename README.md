@@ -88,7 +88,11 @@ Les flux de données sont gérés par des pipelines ETL (Extract, Transform, Loa
 │   └── api/
 └── requirements.txt
 
-
+# Run project Docker(kirillsst)
+```bash
+docker compose build
+docker compose up
+```
 
 
 ## Installation et Utilisation
@@ -142,3 +146,4 @@ Prévisions Horaires : Affichage des courbes de trafic prédites pour la journé
 Analyse Historique : Consultation des statistiques passées (KPI, impact météo, évolutions).
 
 Indicateurs de performance : Code couleur sur la carte indiquant la charge prévue des pistes cyclables.
+
